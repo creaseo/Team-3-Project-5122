@@ -1,0 +1,20 @@
+[project]
+name = "team-3-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Chris Oh", email = "coh11@unc.edu" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "numpy>=2.4.2",
+    "pandas<3.0.0",
+    "requests>=2.32.5",
+    "streamlit>=1.45.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
