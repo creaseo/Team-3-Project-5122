@@ -3,6 +3,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import requests
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
@@ -187,39 +188,113 @@ def create_revenue_chart(df: pd.DataFrame, top_n: int = 10) -> Figure:
     return fig
 
 
-def create_income_gap_chart(df: pd.DataFrame) -> Figure:
-    fig, ax = plt.subplots(figsize=(10, 7))
-    bubble_sizes = np.clip(df["WFH_Workers_2024"] / 120, 40, 1000)
-    scatter = ax.scatter(
-        df["Median_Income"],
-        df["Broadband_Gap"],
-        s=bubble_sizes,
-        c=df["Opportunity_Score"],
-        cmap="Blues",
-        alpha=0.75,
-        edgecolor="white",
-        linewidth=0.8,
+def create_income_gap_chart(df: pd.DataFrame) -> go.Figure:
+    """Interactive bubble scatter built with Plotly so county names and key
+    stats appear on hover. Styled to match the seaborn-whitegrid aesthetic
+    of the other matplotlib charts. Uses the viridis colorscale (colorblind-safe)."""
+    bubble_sizes = np.clip(df["WFH_Workers_2024"] / 120, 8, 45)
+
+    hover_text = [
+        (
+            f"<b>{row['County']}</b><br>"
+            f"Median income: ${row['Median_Income']:,.0f}<br>"
+            f"Broadband gap: {row['Broadband_Gap']:.1f}%<br>"
+            f"WFH rate (2024): {row['WFH_Pct_2024']:.1f}%<br>"
+            f"Opportunity score: {row['Opportunity_Score']:.1f}"
+        )
+        for _, row in df.iterrows()
+    ]
+
+    fig = go.Figure(
+        go.Scatter(
+            x=df["Median_Income"],
+            y=df["Broadband_Gap"],
+            mode="markers",
+            marker=dict(
+                size=bubble_sizes,
+                sizemode="diameter",
+                color=df["Opportunity_Score"],
+                colorscale="viridis",
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text="Opportunity score", font=dict(size=11)),
+                    thickness=12,
+                    len=0.75,
+                    tickfont=dict(size=10),
+                ),
+                line=dict(color="#2d2d2d", width=0.5),
+                opacity=0.85,
+            ),
+            text=hover_text,
+            hovertemplate="%{text}<extra></extra>",
+        )
     )
 
-    focus_counties = df.head(min(12, len(df)))
-    for _, row in focus_counties.iterrows():
-        ax.annotate(
-            row["County"],
-            (row["Median_Income"], row["Broadband_Gap"]),
-            xytext=(5, 5),
-            textcoords="offset points",
-            fontsize=8,
-        )
+    # Static county labels — quadrant-aware offsets, matching the original
+    # matplotlib annotate() approach, but only for the top counties.
+    focus = df.head(min(12, len(df)))
+    cx = focus["Median_Income"].median()
+    cy = focus["Broadband_Gap"].median()
+    PAD = 14  # offset in pixels
 
-    ax.set_xlabel("Median household income")
-    ax.set_ylabel("Broadband gap (%)")
-    ax.set_title("Higher-income counties with unmet broadband demand")
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"${x:,.0f}"))
-    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.0f}%"))
-    _style_axis(ax)
-    cbar = plt.colorbar(scatter)
-    cbar.set_label("Opportunity score")
-    fig.tight_layout()
+    annotations = []
+    for _, row in focus.iterrows():
+        x_off = PAD if row["Median_Income"] >= cx else -PAD
+        y_off = PAD if row["Broadband_Gap"] >= cy else -PAD
+        annotations.append(dict(
+            x=row["Median_Income"],
+            y=row["Broadband_Gap"],
+            text=row["County"],
+            showarrow=True,
+            arrowhead=0,
+            arrowcolor="#aaaaaa",
+            arrowwidth=0.8,
+            ax=x_off,
+            ay=-y_off,  # Plotly ay is inverted (positive = up)
+            font=dict(size=9, color="black"),
+            xanchor="left" if x_off > 0 else "right",
+            yanchor="bottom" if y_off > 0 else "top",
+        ))
+
+    fig.update_layout(
+        # Match seaborn-whitegrid: white background, light gray grid
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(family="sans-serif", size=11, color="black"),
+        title=dict(
+            text="Higher-income counties with unmet broadband demand",
+            font=dict(size=13, color="black"),
+            x=0,
+            xanchor="left",
+        ),
+        xaxis=dict(
+            title=dict(text="Median household income", font=dict(size=11, color="black")),
+            tickprefix="$",
+            tickformat=",.0f",
+            tickfont=dict(size=10, color="black"),
+            showgrid=True,
+            gridcolor="#e8e8e8",
+            gridwidth=1,
+            showline=True,
+            linecolor="#cccccc",
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title=dict(text="Broadband gap (%)", font=dict(size=11, color="black")),
+            ticksuffix="%",
+            tickfont=dict(size=10, color="black"),
+            showgrid=True,
+            gridcolor="#e8e8e8",
+            gridwidth=1,
+            showline=True,
+            linecolor="#cccccc",
+            zeroline=False,
+        ),
+        annotations=annotations,
+        hoverlabel=dict(bgcolor="white", font_size=12, font_color="black", bordercolor="#cccccc"),
+        margin=dict(l=55, r=90, t=45, b=55),
+        height=500,
+    )
     return fig
 
 

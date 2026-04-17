@@ -180,10 +180,13 @@ In simple terms:
         )
 
     with chart_tabs[3]:
-        render_chart_section(
-            "Income vs. broadband gap",
+        st.subheader("Income vs. broadband gap")
+        st.plotly_chart(
             create_income_gap_chart(filtered_df),
-            """
+            use_container_width=True,
+            config={"displayModeBar": False},
+        )
+        st.markdown("""
 ### What this chart means
 This chart compares three things at the same time:
 
@@ -196,9 +199,10 @@ Simple way to read it:
 - higher up = more unmet broadband need,
 - bigger bubble = more work-from-home households.
 
-The color shows the `Opportunity_Score`. A darker bubble means a county looks stronger overall based on the combined scoring method used in the final ranking.
-            """,
-        )
+**Hover over any bubble** to see the county name, income, broadband gap, WFH rate, and opportunity score.
+
+The color shows the `Opportunity_Score` — darker (yellow) means a stronger opportunity overall.
+        """)
 
     with chart_tabs[4]:
         render_chart_section(

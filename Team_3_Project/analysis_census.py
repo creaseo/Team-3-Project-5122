@@ -147,6 +147,56 @@ def chart_1_wfh_growth(df):
     plt.tight_layout()
     return fig
 
+def chart_2_market_value(df):
+    """Bar chart: Market Value Score for Fiber Optic by county"""
+    # Sort for better visualization
+    df_sorted = df.sort_values(by='Market_Value_Score', ascending=False)
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(df_sorted['County'], df_sorted['Market_Value_Score'], color='mediumseagreen')
+    
+    ax.set_ylabel('Market Value Score', fontsize=12, fontweight='bold')
+    ax.set_title('Optic Fiber Market Value Score by County', fontsize=14, fontweight='bold')
+    ax.set_xticks(range(len(df_sorted)))
+    ax.set_xticklabels(df_sorted['County'], rotation=45, ha='right')
+    
+    # Add value labels on top of bars
+    for bar in bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + (yval * 0.02), f"{yval:.2f}", ha='center', va='bottom', fontsize=10)
+        
+    plt.tight_layout()
+    return fig
+
+def chart_3_scatter_wfh_broadband(df):
+    """Scatter plot: Broadband Gap vs WFH Rate to identify high-potential targets"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Bubble size based on total households, scaled
+    sizes = df['Total_HH'] / 500
+    
+    scatter = ax.scatter(df['WFH_Rate_2024'], df['Broadband_Gap'], 
+                         s=sizes, alpha=0.6, c='purple', edgecolors='w', linewidth=1)
+    
+    # Add county labels to each point
+    for i, txt in enumerate(df['County']):
+        ax.annotate(txt, (df['WFH_Rate_2024'].iloc[i], df['Broadband_Gap'].iloc[i]), 
+                    xytext=(5, 5), textcoords='offset points', fontsize=10)
+        
+    ax.set_xlabel('WFH Rate 2024 (%)', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Broadband Gap (%)', fontsize=12, fontweight='bold')
+    ax.set_title('Target Matrix: WFH Adoption vs Broadband Need', fontsize=14, fontweight='bold')
+    
+    # Add grid for readability
+    ax.grid(True, linestyle='--', alpha=0.7)
+    
+    # Add legend for bubble size (approx)
+    scatter_proxy = ax.scatter([], [], s=max(sizes)/2, c='purple', alpha=0.6, edgecolors='w')
+    ax.legend([scatter_proxy], ['Bubble Size = Total Households'], scatterpoints=1, frameon=True, labelspacing=1, title='Legend')
+    
+    plt.tight_layout()
+    return fig
+
 # =============================================================================
 # MAIN EXECUTION
 # =============================================================================
@@ -156,8 +206,23 @@ if __name__ == "__main__":
     df_counties = fetch_real_county_data(metro_only=True)
     if df_counties is not None:
         df_counties = calculate_metrics(df_counties)
+        
+        # Chart 1
         fig1 = chart_1_wfh_growth(df_counties)
         plt.savefig('chart1_wfh_growth_2024.png', dpi=150, bbox_inches='tight')
+        
+        # Chart 2
+        fig2 = chart_2_market_value(df_counties)
+        plt.savefig('chart2_market_value.png', dpi=150, bbox_inches='tight')
+        
+        # Chart 3
+        fig3 = chart_3_scatter_wfh_broadband(df_counties)
+        plt.savefig('chart3_wfh_vs_broadband_gap.png', dpi=150, bbox_inches='tight')
+        
         plt.show()
+        
         print("\nTop Counties by 2024 WFH Rate:")
         print(df_counties[['County', 'WFH_Rate_2024', 'WFH_Growth_Pct']].to_string(index=False))
+        
+        print("\nTop Counties by Market Value Score:")
+        print(df_counties[['County', 'Market_Value_Score', 'Broadband_Gap']].sort_values(by='Market_Value_Score', ascending=False).to_string(index=False))
