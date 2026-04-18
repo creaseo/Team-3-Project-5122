@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent
@@ -21,6 +22,10 @@ from team_3_project.fiber_analysis import (  # noqa: E402
     fetch_county_data,
     filter_counties,
     make_summary_table,
+)
+from team_3_project.ai_insights import (  # noqa: E402
+    generate_recommendations,
+    predict_wfh_growth,
 )
 
 st.set_page_config(
@@ -125,6 +130,8 @@ def main() -> None:
             "Income vs gap",
             "Best targets",
             "Table",
+            "ML Forecast",
+            "AI Recommendations",
         ]
     )
 
@@ -242,6 +249,167 @@ Each part was first scaled to a 0 to 100 range so counties could be compared fai
             ),
             use_container_width=True,
         )
+
+    # ------------------------------------------------------------------
+    # ML Forecast tab
+    # ------------------------------------------------------------------
+    with chart_tabs[6]:
+        st.subheader("ML Work-From-Home Forecast")
+        st.markdown(
+            """
+            A **Linear Regression** model trained on each county's broadband gap and median income
+            predicts the expected work-from-home growth trajectory through **2026 and 2027**.
+            The model uses the 2019→2024 WFH change as the target variable.
+            """
+        )
+
+        with st.spinner("Running ML model…"):
+            predicted_df = predict_wfh_growth(filtered_df)
+
+        display_n = min(top_n, len(predicted_df))
+        forecast_df = (
+            predicted_df.sort_values("WFH_Pct_2027", ascending=False)
+            .head(display_n)
+            .reset_index(drop=True)
+        )
+
+        # Show summary table
+        forecast_table = forecast_df[[
+            "County",
+            "WFH_Pct_2024",
+            "WFH_Pct_2026",
+            "WFH_Pct_2027",
+            "Predicted_WFH_Change",
+            "Trend_Label",
+        ]].rename(columns={
+            "WFH_Pct_2024": "WFH % (2024 actual)",
+            "WFH_Pct_2026": "WFH % (2026 forecast)",
+            "WFH_Pct_2027": "WFH % (2027 forecast)",
+            "Predicted_WFH_Change": "Predicted 5-yr change (pts)",
+            "Trend_Label": "Trend",
+        })
+        st.dataframe(
+            forecast_table.style.format({
+                "WFH % (2024 actual)": "{:.1f}%",
+                "WFH % (2026 forecast)": "{:.1f}%",
+                "WFH % (2027 forecast)": "{:.1f}%",
+                "Predicted 5-yr change (pts)": "{:+.1f}",
+            }),
+            use_container_width=True,
+        )
+
+        st.markdown("---")
+        st.markdown("### Forecast comparison chart")
+
+        # Bar chart comparing 2024 actual vs 2026/2027 forecasts
+        fig, ax = plt.subplots(figsize=(10, max(4, display_n * 0.55)))
+        y = range(display_n)
+        width = 0.28
+        counties = forecast_df["County"].tolist()
+
+        bars1 = ax.barh(
+            [i - width for i in y],
+            forecast_df["WFH_Pct_2024"],
+            width,
+            label="2024 (actual)",
+            color="#4C78A8",
+            alpha=0.9,
+        )
+        bars2 = ax.barh(
+            [i for i in y],
+            forecast_df["WFH_Pct_2026"],
+            width,
+            label="2026 (forecast)",
+            color="#F58518",
+            alpha=0.9,
+        )
+        bars3 = ax.barh(
+            [i + width for i in y],
+            forecast_df["WFH_Pct_2027"],
+            width,
+            label="2027 (forecast)",
+            color="#54A24B",
+            alpha=0.9,
+        )
+
+        ax.set_yticks(list(y))
+        ax.set_yticklabels(counties, fontsize=9)
+        ax.set_xlabel("Work-from-home rate (%)")
+        ax.set_title("WFH Rate: 2024 Actual vs 2026/2027 ML Forecast")
+        ax.legend(loc="lower right", fontsize=9)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        fig.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+
+        st.markdown("""
+### How the model works
+The model learns from the 5-year WFH trend (2019→2024) and uses each county's
+**broadband gap** and **median income** as predictors.
+- Counties with higher broadband gaps tend to have more room for remote-work growth.
+- Higher income counties tend to have more knowledge workers with WFH-compatible jobs.
+- Projections extend the learned annual rate 2–3 years forward.
+
+> **Note:** These are statistical projections, not guarantees. Treat 2026/2027 values
+> as planning estimates, not exact forecasts.
+        """)
+
+    # ------------------------------------------------------------------
+    # AI Recommendations tab
+    # ------------------------------------------------------------------
+    with chart_tabs[7]:
+        st.subheader("AI Investment Recommendations")
+        st.markdown(
+            """
+            The AI engine translates each county's scoring-model metrics into
+            **plain-language, prioritised recommendations**. Expand any county card
+            to see the full analysis.
+            """
+        )
+
+        with st.spinner("Generating recommendations…"):
+            recs = generate_recommendations(filtered_df.head(top_n))
+
+        if not recs:
+            st.info("No recommendations available for the current filter set.")
+        else:
+            # Summary metrics row
+            top_priority_count = sum(1 for r in recs if r["priority"] == "🔴 Top Priority")
+            mid_priority_count = sum(1 for r in recs if r["priority"] == "🟡 Medium Priority")
+            low_priority_count = sum(1 for r in recs if r["priority"] == "🟢 Lower Priority")
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("🔴 Top Priority counties", top_priority_count)
+            col2.metric("🟡 Medium Priority counties", mid_priority_count)
+            col3.metric("🟢 Lower Priority counties", low_priority_count)
+
+            st.markdown("---")
+
+            for rec in recs:
+                priority_color = {
+                    "🔴 Top Priority": "#ff4b4b",
+                    "🟡 Medium Priority": "#ffa500",
+                    "🟢 Lower Priority": "#21c354",
+                }.get(rec["priority"], "#cccccc")
+
+                label = f"{rec['priority']} — **{rec['county']}**  (Score: {rec['opportunity_score']:.1f})"
+                with st.expander(label, expanded=(rec == recs[0])):
+                    st.markdown(f"*{rec['headline']}*")
+                    st.markdown("**Recommendations:**")
+                    for bullet in rec["bullets"]:
+                        st.markdown(f"- {bullet}")
+
+                    col_s, col_w = st.columns(2)
+                    with col_s:
+                        if rec["strengths"]:
+                            st.markdown("**✅ Strengths**")
+                            for s in rec["strengths"]:
+                                st.markdown(f"- {s}")
+                    with col_w:
+                        if rec["watch_outs"]:
+                            st.markdown("**⚠️ Watch outs**")
+                            for w in rec["watch_outs"]:
+                                st.markdown(f"- {w}")
 
 
 if __name__ == "__main__":
