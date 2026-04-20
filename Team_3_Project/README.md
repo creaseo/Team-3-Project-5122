@@ -6,7 +6,7 @@ An interactive Streamlit dashboard that analyzes North Carolina county-level dat
 
 ## Deployed App
 
-[Link to deployed app — coming soon]
+https://team-3-project-5122-aplnsqx23fcxjqtrn8nmxb.streamlit.app/
 
 ## Requirements
 
