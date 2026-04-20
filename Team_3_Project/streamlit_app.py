@@ -407,7 +407,7 @@ The model learns from the 5-year WFH trend (2019→2024) and uses each county's
                                 st.markdown(f"- {s}")
                     with col_w:
                         if rec["watch_outs"]:
-                            st.markdown("**⚠️ Watch outs**")
+                            st.markdown("**Watch outs**")
                             for w in rec["watch_outs"]:
                                 st.markdown(f"- {w}")
 
