@@ -24,7 +24,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 1. Clone the repository and move into the project folder:
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/creaseo/Team-3-Project-5122
 cd Team-3-Project-5122/Team_3_Project
 ```
 
