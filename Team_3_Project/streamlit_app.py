@@ -402,7 +402,7 @@ The model learns from the 5-year WFH trend (2019→2024) and uses each county's
                     col_s, col_w = st.columns(2)
                     with col_s:
                         if rec["strengths"]:
-                            st.markdown("**✅ Strengths**")
+                            st.markdown("**Strengths**")
                             for s in rec["strengths"]:
                                 st.markdown(f"- {s}")
                     with col_w:
