@@ -397,19 +397,19 @@ The model learns from the 5-year WFH trend (2019→2024) and uses each county's
                     st.markdown(f"*{rec['headline']}*")
                     st.markdown("**Recommendations:**")
                     for bullet in rec["bullets"]:
-                        st.markdown(f"- {bullet}")
+                        st.markdown(f"- {bullet.replace('$', r'\$')}")
 
                     col_s, col_w = st.columns(2)
                     with col_s:
                         if rec["strengths"]:
                             st.markdown("**✅ Strengths**")
                             for s in rec["strengths"]:
-                                st.markdown(f"- {s}")
+                                st.markdown(f"- {s.replace('$', r'\$')}")
                     with col_w:
                         if rec["watch_outs"]:
                             st.markdown("**⚠️ Watch outs**")
                             for w in rec["watch_outs"]:
-                                st.markdown(f"- {w}")
+                                st.markdown(f"- {w.replace('$', r'\$')}")
 
 
 if __name__ == "__main__":
